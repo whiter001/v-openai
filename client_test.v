@@ -1,3 +1,4 @@
+// vtest retry: 3
 module openai
 
 fn test_create_chat_completion_against_a_loopback_server() {

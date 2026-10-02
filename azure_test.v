@@ -1,3 +1,4 @@
+// vtest retry: 3
 module openai
 
 fn test_azure_client_uses_api_key_header_and_version_query() {

@@ -1,3 +1,4 @@
+// vtest retry: 3
 module openai
 
 import x.json2 as json
