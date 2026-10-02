@@ -50,7 +50,7 @@ mut:
 	text   string
 }
 
-fn count_chunk(mut counter StreamCounter, chunk ChatCompletionChunk) {
+fn count_chunk(mut counter &StreamCounter, chunk ChatCompletionChunk) {
 	if chunk.choices.len != 0 {
 		counter.pieces++
 		counter.text += chunk.choices[0].delta.content

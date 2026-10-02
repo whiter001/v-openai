@@ -34,7 +34,7 @@ mut:
 	pieces []string
 }
 
-fn sink_chunk(mut sink ChunkSink, chunk ChatCompletionChunk) {
+fn sink_chunk(mut sink &ChunkSink, chunk ChatCompletionChunk) {
 	sink.pieces << chunk.choices[0].delta.content
 }
 

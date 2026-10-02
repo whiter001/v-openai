@@ -83,7 +83,7 @@ mut:
 	status string
 }
 
-fn sink_response_event(mut sink ResponseEventSink, event ResponseStreamEvent) {
+fn sink_response_event(mut sink &ResponseEventSink, event ResponseStreamEvent) {
 	sink.types << event.@type
 	if event.delta != '' {
 		sink.deltas << event.delta
