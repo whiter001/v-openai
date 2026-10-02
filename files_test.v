@@ -3,7 +3,7 @@ module openai
 import x.json2 as json
 
 fn test_upload_file_sends_a_multipart_body() {
-	mock := start_mock_server('HTTP/1.1 200 OK', 'application/json',
+	mut mock := start_mock_server('HTTP/1.1 200 OK', 'application/json',
 		'{"id":"file-1","object":"file","bytes":12,"created_at":1740000000,"filename":"data.jsonl","purpose":"batch"}')
 	defer {
 		mock.listener.close() or {}
@@ -26,7 +26,7 @@ fn test_upload_file_sends_a_multipart_body() {
 }
 
 fn test_create_transcription_sends_the_model_field() {
-	mock := start_mock_server('HTTP/1.1 200 OK', 'application/json', '{"text":"hello world"}')
+	mut mock := start_mock_server('HTTP/1.1 200 OK', 'application/json', '{"text":"hello world"}')
 	defer {
 		mock.listener.close() or {}
 	}

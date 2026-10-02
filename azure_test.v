@@ -1,7 +1,7 @@
 module openai
 
 fn test_azure_client_uses_api_key_header_and_version_query() {
-	mock := start_mock_server('HTTP/1.1 200 OK', 'application/json', mock_chat_body)
+	mut mock := start_mock_server('HTTP/1.1 200 OK', 'application/json', mock_chat_body)
 	defer {
 		mock.listener.close() or {}
 	}

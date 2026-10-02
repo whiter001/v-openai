@@ -21,7 +21,7 @@ const mock_stream_body = 'data: {"id":"chatcmpl-mock","object":"chat.completion.
 
 fn start_mock_server(status_line string, content_type string, response_body string) &MockServer {
 	mut listener := net.listen_tcp(.ip, ':0') or { panic(err) }
-	mock := &MockServer{
+	mut mock := &MockServer{
 		listener:      listener
 		// Roomy enough for several HTTP client retries; a full channel would
 		// deadlock the serve thread against the client's response wait.

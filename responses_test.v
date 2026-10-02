@@ -96,7 +96,7 @@ fn sink_response_event(mut sink ResponseEventSink, event ResponseStreamEvent) {
 const mock_response_stream_body = 'event: response.created\ndata: {"type":"response.created","response":{"id":"resp_9","object":"response","created_at":1740000000,"status":"in_progress","model":"gpt-4o-mini"}}\n\nevent: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"Hel"}\n\nevent: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"lo"}\n\nevent: response.completed\ndata: {"type":"response.completed","response":{"id":"resp_9","object":"response","created_at":1740000000,"status":"completed","model":"gpt-4o-mini","output":[{"type":"message","id":"msg_1","role":"assistant","status":"completed","content":[{"type":"output_text","text":"Hello"}]}],"usage":{"input_tokens":3,"output_tokens":1,"total_tokens":4}}}\n\n'
 
 fn test_create_response_stream_against_a_loopback_server() {
-	mock := start_mock_server('HTTP/1.1 200 OK', 'text/event-stream', mock_response_stream_body)
+	mut mock := start_mock_server('HTTP/1.1 200 OK', 'text/event-stream', mock_response_stream_body)
 	defer {
 		mock.listener.close() or {}
 	}

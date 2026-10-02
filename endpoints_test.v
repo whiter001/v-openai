@@ -3,7 +3,7 @@ module openai
 import x.json2 as json
 
 fn test_list_models_against_a_loopback_server() {
-	mock := start_mock_server('HTTP/1.1 200 OK', 'application/json',
+	mut mock := start_mock_server('HTTP/1.1 200 OK', 'application/json',
 		'{"object":"list","data":[{"id":"gpt-4o-mini","object":"model","created":1710000000,"owned_by":"system"}]}')
 	defer {
 		mock.listener.close() or {}
@@ -24,7 +24,7 @@ fn test_list_models_against_a_loopback_server() {
 }
 
 fn test_get_model_against_a_loopback_server() {
-	mock := start_mock_server('HTTP/1.1 200 OK', 'application/json',
+	mut mock := start_mock_server('HTTP/1.1 200 OK', 'application/json',
 		'{"id":"gpt-4o-mini","object":"model","created":1710000000,"owned_by":"system"}')
 	defer {
 		mock.listener.close() or {}
@@ -45,7 +45,7 @@ fn test_get_model_against_a_loopback_server() {
 
 fn test_create_moderation_against_a_loopback_server() {
 	body := '{"id":"modr-1","model":"omni-moderation-latest","results":[{"flagged":true,"categories":{"harassment":true,"harassment/threatening":false,"hate":false,"hate/threatening":false,"illicit":false,"illicit/violent":false,"self-harm":false,"self-harm/intent":false,"self-harm/instructions":false,"sexual":false,"sexual/minors":false,"violence":true,"violence/graphic":false},"category_scores":{"harassment":0.9,"harassment/threatening":0.01,"hate":0.0,"hate/threatening":0.0,"illicit":0.0,"illicit/violent":0.0,"self-harm":0.0,"self-harm/intent":0.0,"self-harm/instructions":0.0,"sexual":0.0,"sexual/minors":0.0,"violence":0.8,"violence/graphic":0.0}}]}'
-	mock := start_mock_server('HTTP/1.1 200 OK', 'application/json', body)
+	mut mock := start_mock_server('HTTP/1.1 200 OK', 'application/json', body)
 	defer {
 		mock.listener.close() or {}
 	}
@@ -91,7 +91,7 @@ fn test_encode_image_request_sends_only_set_fields() {
 }
 
 fn test_create_speech_returns_raw_bytes() {
-	mock := start_mock_server('HTTP/1.1 200 OK', 'audio/mpeg', '\x89PNG-not-really-audio')
+	mut mock := start_mock_server('HTTP/1.1 200 OK', 'audio/mpeg', '\x89PNG-not-really-audio')
 	defer {
 		mock.listener.close() or {}
 	}

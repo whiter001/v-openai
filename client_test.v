@@ -1,7 +1,7 @@
 module openai
 
 fn test_create_chat_completion_against_a_loopback_server() {
-	mock := start_mock_server('HTTP/1.1 200 OK', 'application/json', mock_chat_body)
+	mut mock := start_mock_server('HTTP/1.1 200 OK', 'application/json', mock_chat_body)
 	defer {
 		mock.listener.close() or {}
 	}
@@ -39,7 +39,7 @@ fn sink_chunk(mut sink ChunkSink, chunk ChatCompletionChunk) {
 }
 
 fn test_create_chat_completion_stream_against_a_loopback_server() {
-	mock := start_mock_server('HTTP/1.1 200 OK', 'text/event-stream', mock_stream_body)
+	mut mock := start_mock_server('HTTP/1.1 200 OK', 'text/event-stream', mock_stream_body)
 	defer {
 		mock.listener.close() or {}
 	}
@@ -61,7 +61,7 @@ fn test_create_chat_completion_stream_against_a_loopback_server() {
 }
 
 fn test_http_error_is_decoded_into_an_api_error() {
-	mock := start_mock_server('HTTP/1.1 429 Too Many Requests', 'application/json',
+	mut mock := start_mock_server('HTTP/1.1 429 Too Many Requests', 'application/json',
 		'{"error":{"message":"slow down","type":"rate_limit_exceeded","code":"rate_limited"}}')
 	defer {
 		mock.listener.close() or {}
