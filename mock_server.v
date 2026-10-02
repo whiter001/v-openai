@@ -43,11 +43,16 @@ fn (mut mock MockServer) serve(status_line string, content_type string, response
 
 fn (mut mock MockServer) serve_one(mut conn net.TcpConn, status_line string, content_type string, response_body string) {
 	mut reader := io.new_buffered_reader(reader: conn)
+	mut first := true
 	for {
 		line := reader.read_line() or { break }
 		trimmed := line.trim_right('\r\n')
 		if trimmed == '' {
 			break
+		}
+		if first {
+			first = false
+			eprintln('[mock ${mock.listener.addr() or { return }}] ${trimmed}')
 		}
 		mock.request_lines <- trimmed
 	}
