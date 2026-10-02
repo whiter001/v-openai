@@ -7,11 +7,25 @@ Ollama**, vLLM, etc. — by changing `base_url`.
 
 ## Features
 
-- Chat completions: `create_chat_completion`
-- Streaming (SSE) with incremental chunk callbacks: `create_chat_completion_stream`
-- Tool calling (function definitions, tool call history, tool results)
-- Embeddings: `create_embedding`
-- Typed `ApiError` with HTTP status and provider error code
+- **Responses API** (recommended for new integrations): `create_response` +
+  `create_response_stream` with typed stream events, `previous_response_id`
+  multi-turn chaining, reasoning effort, structured outputs
+- **Chat Completions**: `create_chat_completion` +
+  `create_chat_completion_stream` (SSE with incremental chunk callbacks)
+- **Multimodal input**: text, image (URL/base64) and audio content parts
+- **Tool calling**: function definitions, named `tool_choice`, parallel
+  calls, tool call history
+- **Structured outputs**: JSON mode and `json_schema` with strict flag
+- **Embeddings**: `create_embedding`
+- **Images**: `create_image` (DALL-E / gpt-image)
+- **Audio**: `create_speech` (TTS), `create_transcription` (Whisper)
+- **Moderations**: `create_moderation`
+- **Models**: `list_models` / `get_model`
+- **Files / Batches / Vector stores / Fine-tuning**: upload, list, get,
+  delete, cancel
+- **Azure OpenAI**: `new_azure_client` (deployment URLs, `api-key` header,
+  `api-version` query)
+- **Typed `ApiError`** with HTTP status and provider error code
 - Zero dependencies beyond V's standard library
 
 ## Install
@@ -39,13 +53,35 @@ fn main() {
 		api_key:  os.getenv('OPENAI_API_KEY')
 		base_url: os.getenv_opt('OPENAI_BASE_URL') or { 'https://api.openai.com/v1' }
 	)
+	response := client.create_response(openai.CreateResponseRequest{
+		model: 'gpt-4o-mini'
+		input: 'Hello!'
+	)!
+	println(response.output_text())
+}
+```
+
+Chat Completions remains fully supported for existing integrations:
+
+```v
 	response := client.create_chat_completion(
 		model:       'gpt-4o-mini'
 		messages:    [openai.user_message('Hello!')]
 		temperature: 0.0
 	)!
 	println(response.choices[0].message.content or { '' })
-}
+```
+
+## Azure OpenAI
+
+```v
+	client := openai.new_azure_client(
+		api_key:    os.getenv('AZURE_OPENAI_API_KEY')
+		endpoint:   'https://myresource.openai.azure.com'
+		deployment: 'my-deployment'
+	)
+	// requests go to {endpoint}/openai/deployments/{deployment}/...
+	// with an api-key header and ?api-version=2024-10-21
 ```
 
 ## Streaming
@@ -86,7 +122,7 @@ final := client.create_chat_completion(model: model, messages: messages, tools: 
 ```
 
 See `examples/` for complete programs: `chat.v`, `stream.v`, `tool_call.v`,
-`backends.v`.
+`backends.v`, `vision.v`, `responses.v`, `responses_stream.v`.
 
 ## Other providers
 

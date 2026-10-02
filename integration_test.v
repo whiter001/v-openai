@@ -5,6 +5,24 @@ import os
 // These tests talk to the real API and only run when OPENAI_API_KEY is set,
 // e.g.: `OPENAI_API_KEY=sk-... v test .`
 
+fn test_real_response() {
+	key := os.getenv('OPENAI_API_KEY')
+	if key == '' {
+		return
+	}
+	base_url := os.getenv_opt('OPENAI_BASE_URL') or { 'https://api.openai.com/v1' }
+	model := os.getenv_opt('OPENAI_MODEL') or { 'gpt-4o-mini' }
+	client := new_client(
+		api_key:  key
+		base_url: base_url
+	)
+	response := client.create_response(CreateResponseRequest{
+		model: model
+		input: 'Reply with exactly: pong'
+	})!
+	assert response.output_text() != ''
+}
+
 fn test_real_chat_completion() {
 	key := os.getenv('OPENAI_API_KEY')
 	if key == '' {

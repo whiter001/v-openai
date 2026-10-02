@@ -15,6 +15,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: vlang/setup-v@main
+        if: runner.os != 'Windows'
+      - name: Setup V (Windows)
+        # vlang/setup-v fails on windows-latest; install the release zip instead.
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri https://github.com/vlang/v/releases/latest/download/v_windows.zip -OutFile v.zip
+          Expand-Archive v.zip -DestinationPath C:\v
+          echo "C:\v\v" | Out-File -FilePath $env:GITHUB_PATH -Append
       - name: Format check
         run: v fmt -verify .
       - name: Test
