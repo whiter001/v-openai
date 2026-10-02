@@ -5,3 +5,4 @@
 /examples/tool_call
 /examples/backends
 gf-run-*.zip
+.*.v3cc.*/
