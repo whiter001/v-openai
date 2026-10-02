@@ -30,7 +30,15 @@ jobs:
         if: runner.os != 'Windows'
         run: v fmt -verify .
       - name: Test
+        if: runner.os != 'Windows'
         run: v -stats test .
+      - name: Test (Windows)
+        # The release build races writing thirdparty module-cache objects
+        # when test binaries compile in parallel; serialize on Windows.
+        if: runner.os == 'Windows'
+        run: v -stats test .
+        env:
+          VJOBS: '1'
       - name: Link module
         run: v link
       - name: Build examples
