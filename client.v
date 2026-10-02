@@ -47,6 +47,22 @@ fn (c &Client) header() http.Header {
 	return header
 }
 
+// get sends a GET and returns the response body. HTTP errors are decoded
+// into ApiError.
+fn (c &Client) get(path string) !string {
+	response := http.fetch(
+		method:        .get
+		url:           c.url(path)
+		header:        c.header()
+		read_timeout:  c.config.read_timeout
+		write_timeout: c.config.write_timeout
+	)!
+	if response.status_code >= 400 {
+		return decode_error_response(response.status_code, response.body)
+	}
+	return response.body
+}
+
 // post sends a JSON POST and returns the response body. HTTP errors are
 // decoded into ApiError.
 fn (c &Client) post(path string, payload string) !string {
