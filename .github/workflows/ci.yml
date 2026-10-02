@@ -25,6 +25,9 @@ jobs:
           Expand-Archive v.zip -DestinationPath C:\v
           echo "C:\v\v" | Out-File -FilePath $env:GITHUB_PATH -Append
       - name: Format check
+        # The Windows job installs the latest release zip, whose vfmt lags
+        # master; formatting is already verified on the other two platforms.
+        if: runner.os != 'Windows'
         run: v fmt -verify .
       - name: Test
         run: v -stats test .
