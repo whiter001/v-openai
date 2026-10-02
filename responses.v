@@ -194,6 +194,7 @@ mut:
 	parser SseParser
 	caller ResponseStreamCaller
 	done   bool
+	events int
 }
 
 fn response_chunk_adapter(state_ptr voidptr, raw_chunk string) {
@@ -210,6 +211,7 @@ fn response_chunk_adapter(state_ptr voidptr, raw_chunk string) {
 			if event.is_terminal() {
 				state.done = true
 			}
+			state.events++
 			state.caller.call(event)
 			if state.done {
 				return
@@ -232,7 +234,13 @@ pub fn (c &Client) create_response_stream[T](request CreateResponseRequest, cont
 		...request
 		stream: true
 	})
-	c.post_stream('/responses', payload, state, response_chunk_adapter)!
+	body := c.post_stream('/responses', payload, state, response_chunk_adapter)!
+	if state.events == 0 && body.len != 0 {
+		// The transport delivered no progress callbacks (e.g. HTTP/3, which
+		// net.http documents as not honoring them): the full SSE body is
+		// still a valid event sequence, replay it through the same path.
+		response_chunk_adapter(state, body)
+	}
 }
 
 fn encode_response_request(request CreateResponseRequest) string {

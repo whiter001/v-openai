@@ -158,6 +158,7 @@ mut:
 	parser SseParser
 	caller ChatStreamCaller
 	done   bool
+	chunks int
 }
 
 fn chat_chunk_adapter(state_ptr voidptr, raw_chunk string) {
@@ -171,6 +172,7 @@ fn chat_chunk_adapter(state_ptr voidptr, raw_chunk string) {
 			return
 		}
 		if completion_chunk := json.decode[ChatCompletionChunk](payload) {
+			state.chunks++
 			state.caller.call(completion_chunk)
 		}
 	}
@@ -197,7 +199,13 @@ pub fn (c &Client) create_chat_completion_stream[T](request ChatCompletionReques
 		...request
 		stream: true
 	})
-	c.post_stream('/chat/completions', payload, state, chat_chunk_adapter)!
+	body := c.post_stream('/chat/completions', payload, state, chat_chunk_adapter)!
+	if state.chunks == 0 && body.len != 0 {
+		// The transport delivered no progress callbacks (e.g. HTTP/3, which
+		// net.http documents as not honoring them): the full SSE body is
+		// still a valid event sequence, replay it through the same path.
+		chat_chunk_adapter(state, body)
+	}
 }
 
 // encode_chat_request renders the request by hand: only explicitly set
