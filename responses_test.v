@@ -84,7 +84,8 @@ mut:
 	status string
 }
 
-fn sink_response_event(mut sink &ResponseEventSink, event ResponseStreamEvent) {
+fn sink_response_event(ctx voidptr, event ResponseStreamEvent) {
+	mut sink := unsafe { &ResponseEventSink(ctx) }
 	sink.types << event.@type
 	if event.delta != '' {
 		sink.deltas << event.delta

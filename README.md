@@ -86,13 +86,12 @@ Chat Completions remains fully supported for existing integrations:
 
 ## Streaming
 
-Streaming callbacks take an explicit context (V closures cannot be stored in
-struct fields); pass a reference type to observe mutations:
+Stream callbacks are plain functions with a `voidptr` context (the shape
+that compiles and runs identically across V toolchains); cast the context
+inside the callback:
 
 ```v
-struct Printer {}
-
-fn print_chunk(_ Printer, chunk openai.ChatCompletionChunk) {
+fn print_chunk(_ voidptr, chunk openai.ChatCompletionChunk) {
 	if chunk.choices.len != 0 {
 		print(chunk.choices[0].delta.content)
 		flush_stdout()
@@ -102,7 +101,16 @@ fn print_chunk(_ Printer, chunk openai.ChatCompletionChunk) {
 client.create_chat_completion_stream(openai.ChatCompletionRequest{
 	model:    'gpt-4o-mini'
 	messages: [openai.user_message('Tell me a story.')]
-}, Printer{}, print_chunk)!
+}, unsafe { nil }, print_chunk)!
+```
+
+To observe mutations, pass a pointer and cast it back:
+
+```v
+fn sink_chunk(ctx voidptr, chunk openai.ChatCompletionChunk) {
+	mut sink := unsafe { &ChunkSink(ctx) }
+	sink.pieces << chunk.choices[0].delta.content
+}
 ```
 
 ## Tool calling

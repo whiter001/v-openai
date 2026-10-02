@@ -134,31 +134,26 @@ pub:
 	arguments string @[omitempty]
 }
 
-// ChatStreamCaller is the interface between the type-erased stream state
-// and the caller's typed callback. Interface dispatch is used instead of
-// casting function pointers: generic fn values do not compile on older V
-// versions, and raw fn pointer casts crash there at runtime.
-interface ChatStreamCaller {
-	call(ChatCompletionChunk)
-}
-
-// ChatCallbackAdapter adapts a (context, callback) pair to ChatStreamCaller.
-struct ChatCallbackAdapter[T] {
-	context  T
-	callback fn (T, ChatCompletionChunk) = unsafe { nil }
-}
-
-fn (adapter ChatCallbackAdapter[T]) call(chunk ChatCompletionChunk) {
-	adapter.callback(adapter.context, chunk)
-}
+// ChatChunkCallback receives one ChatCompletionChunk per server-sent event.
+// The context travels as a plain voidptr: generics, interface dispatch and
+// fn pointer casts each broke on some released V toolchain, while a plain
+// fn pointer with a voidptr context compiles and runs identically
+// everywhere. Cast the context inside the callback:
+//
+//	fn sink_chunk(ctx voidptr, chunk openai.ChatCompletionChunk) {
+//		mut sink := unsafe { &ChunkSink(ctx) }
+//		sink.pieces << chunk.choices[0].delta.content
+//	}
+pub type ChatChunkCallback = fn (voidptr, ChatCompletionChunk)
 
 // ChatStreamState threads the SSE parser and the caller through post_stream.
 struct ChatStreamState {
 mut:
-	parser SseParser
-	caller ChatStreamCaller
-	done   bool
-	chunks int
+	parser   SseParser
+	context  voidptr
+	callback ChatChunkCallback = unsafe { nil }
+	done     bool
+	chunks   int
 }
 
 fn chat_chunk_adapter(state_ptr voidptr, raw_chunk string) {
@@ -173,7 +168,7 @@ fn chat_chunk_adapter(state_ptr voidptr, raw_chunk string) {
 		}
 		if completion_chunk := json.decode[ChatCompletionChunk](payload) {
 			state.chunks++
-			state.caller.call(completion_chunk)
+			state.callback(state.context, completion_chunk)
 		}
 	}
 }
@@ -186,14 +181,10 @@ pub fn (c &Client) create_chat_completion(request ChatCompletionRequest) !ChatCo
 
 // create_chat_completion_stream runs a streaming chat completion, invoking
 // `callback` with `context` for every chunk until the server sends `[DONE]`.
-// Pass a reference type as `context` to observe mutations; the callback must
-// be a plain function (closures in struct fields lose their captures).
-pub fn (c &Client) create_chat_completion_stream[T](request ChatCompletionRequest, context T, callback fn (T, ChatCompletionChunk)) ! {
+pub fn (c &Client) create_chat_completion_stream(request ChatCompletionRequest, context voidptr, callback ChatChunkCallback) ! {
 	mut state := &ChatStreamState{
-		caller: ChatCallbackAdapter[T]{
-			context:  context
-			callback: callback
-		}
+		context:  context
+		callback: callback
 	}
 	payload := encode_chat_request(ChatCompletionRequest{
 		...request

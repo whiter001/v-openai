@@ -168,33 +168,20 @@ pub fn (c &Client) create_response(request CreateResponseRequest) !Response {
 	return json.decode[Response](body)!
 }
 
-// ResponseStreamCaller is the interface between the type-erased stream
-// state and the caller's typed callback. Interface dispatch is used
-// instead of casting function pointers: generic fn values do not compile
-// on older V versions, and raw fn pointer casts crash there at runtime.
-interface ResponseStreamCaller {
-	call(ResponseStreamEvent)
-}
-
-// ResponseCallbackAdapter adapts a (context, callback) pair to
-// ResponseStreamCaller.
-struct ResponseCallbackAdapter[T] {
-	context  T
-	callback fn (T, ResponseStreamEvent) = unsafe { nil }
-}
-
-fn (adapter ResponseCallbackAdapter[T]) call(event ResponseStreamEvent) {
-	adapter.callback(adapter.context, event)
-}
+// ResponseEventCallback receives one ResponseStreamEvent per server-sent
+// event. Like ChatChunkCallback, the context travels as a plain voidptr for
+// maximum toolchain compatibility; cast it inside the callback.
+pub type ResponseEventCallback = fn (voidptr, ResponseStreamEvent)
 
 // ResponseStreamState threads the SSE parser and the caller through
 // post_stream, latching when a terminal event arrives.
 struct ResponseStreamState {
 mut:
-	parser SseParser
-	caller ResponseStreamCaller
-	done   bool
-	events int
+	parser   SseParser
+	context  voidptr
+	callback ResponseEventCallback = unsafe { nil }
+	done     bool
+	events   int
 }
 
 fn response_chunk_adapter(state_ptr voidptr, raw_chunk string) {
@@ -212,7 +199,7 @@ fn response_chunk_adapter(state_ptr voidptr, raw_chunk string) {
 				state.done = true
 			}
 			state.events++
-			state.caller.call(event)
+			state.callback(state.context, event)
 			if state.done {
 				return
 			}
@@ -223,12 +210,10 @@ fn response_chunk_adapter(state_ptr voidptr, raw_chunk string) {
 // create_response_stream runs a streaming Responses API call, invoking
 // `callback` with `context` for every event until a terminal event
 // (response.completed, response.failed or error) arrives.
-pub fn (c &Client) create_response_stream[T](request CreateResponseRequest, context T, callback fn (T, ResponseStreamEvent)) ! {
+pub fn (c &Client) create_response_stream(request CreateResponseRequest, context voidptr, callback ResponseEventCallback) ! {
 	mut state := &ResponseStreamState{
-		caller: ResponseCallbackAdapter[T]{
-			context:  context
-			callback: callback
-		}
+		context:  context
+		callback: callback
 	}
 	payload := encode_response_request(CreateResponseRequest{
 		...request
