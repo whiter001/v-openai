@@ -101,8 +101,11 @@ fn test_create_response_stream_against_a_loopback_server() {
 		mock.listener.close() or {}
 	}
 	client := new_client(
-		api_key:  'sk-test'
-		base_url: mock.base_url()
+		api_key:                  'sk-test'
+		base_url:                 mock.base_url()
+		// The mocks below are one-purpose loopback servers; keep net.http's
+		// keep-alive pool from reusing a stale connection across them.
+		disable_connection_reuse: true
 	)
 
 	mut sink := &ResponseEventSink{}

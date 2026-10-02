@@ -7,26 +7,28 @@ import time
 // and an `api-version` query parameter.
 pub struct AzureConfig {
 pub:
-	api_key       string @[required]
-	endpoint      string @[required]
-	deployment    string @[required]
-	api_version   string = '2024-10-21'
-	read_timeout  i64    = 300 * time.second
-	write_timeout i64    = 30 * time.second
-	headers       map[string]string
+	api_key                  string @[required]
+	endpoint                 string @[required]
+	deployment               string @[required]
+	api_version              string = '2024-10-21'
+	read_timeout             i64    = 300 * time.second
+	write_timeout            i64    = 30 * time.second
+	headers                  map[string]string
+	disable_connection_reuse bool
 }
 
 // new_azure_client creates a Client talking to an Azure OpenAI deployment.
 pub fn new_azure_client(config AzureConfig) Client {
 	return new_client(
-		api_key:       config.api_key
-		base_url:      '${config.endpoint.trim_right('/')}/openai/deployments/${config.deployment}'
-		auth_style:    .api_key
-		query_params:  {
+		api_key:                  config.api_key
+		base_url:                 '${config.endpoint.trim_right('/')}/openai/deployments/${config.deployment}'
+		auth_style:               .api_key
+		query_params:             {
 			'api-version': config.api_version
 		}
-		read_timeout:  config.read_timeout
-		write_timeout: config.write_timeout
-		headers:       config.headers
+		read_timeout:             config.read_timeout
+		write_timeout:            config.write_timeout
+		headers:                  config.headers
+		disable_connection_reuse: config.disable_connection_reuse
 	)
 }

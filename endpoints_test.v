@@ -9,8 +9,11 @@ fn test_list_models_against_a_loopback_server() {
 		mock.listener.close() or {}
 	}
 	client := new_client(
-		api_key:  'sk-test'
-		base_url: mock.base_url()
+		api_key:                  'sk-test'
+		base_url:                 mock.base_url()
+		// The mocks below are one-purpose loopback servers; keep net.http's
+		// keep-alive pool from reusing a stale connection across them.
+		disable_connection_reuse: true
 	)
 
 	models := client.list_models()!
@@ -27,8 +30,11 @@ fn test_get_model_against_a_loopback_server() {
 		mock.listener.close() or {}
 	}
 	client := new_client(
-		api_key:  'sk-test'
-		base_url: mock.base_url()
+		api_key:                  'sk-test'
+		base_url:                 mock.base_url()
+		// The mocks below are one-purpose loopback servers; keep net.http's
+		// keep-alive pool from reusing a stale connection across them.
+		disable_connection_reuse: true
 	)
 
 	model := client.get_model('gpt-4o-mini')!
@@ -44,8 +50,11 @@ fn test_create_moderation_against_a_loopback_server() {
 		mock.listener.close() or {}
 	}
 	client := new_client(
-		api_key:  'sk-test'
-		base_url: mock.base_url()
+		api_key:                  'sk-test'
+		base_url:                 mock.base_url()
+		// The mocks below are one-purpose loopback servers; keep net.http's
+		// keep-alive pool from reusing a stale connection across them.
+		disable_connection_reuse: true
 	)
 
 	response := client.create_moderation(ModerationRequest{
@@ -87,8 +96,11 @@ fn test_create_speech_returns_raw_bytes() {
 		mock.listener.close() or {}
 	}
 	client := new_client(
-		api_key:  'sk-test'
-		base_url: mock.base_url()
+		api_key:                  'sk-test'
+		base_url:                 mock.base_url()
+		// The mocks below are one-purpose loopback servers; keep net.http's
+		// keep-alive pool from reusing a stale connection across them.
+		disable_connection_reuse: true
 	)
 
 	audio := client.create_speech(SpeechRequest{

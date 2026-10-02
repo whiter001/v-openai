@@ -27,6 +27,9 @@ pub:
 	write_timeout i64 = 30 * time.second
 	// headers are added to every request, e.g. provider specific keys.
 	headers map[string]string
+	// disable_connection_reuse opens a fresh connection per request instead
+	// of using net.http's keep-alive pool.
+	disable_connection_reuse bool
 }
 
 // Client is an OpenAI-compatible API client. It is safe to copy; all state
@@ -77,11 +80,12 @@ fn (c &Client) header() http.Header {
 // into ApiError.
 fn (c &Client) get(path string) !string {
 	response := http.fetch(
-		method:        .get
-		url:           c.url(path)
-		header:        c.header()
-		read_timeout:  c.config.read_timeout
-		write_timeout: c.config.write_timeout
+		method:                   .get
+		url:                      c.url(path)
+		header:                   c.header()
+		read_timeout:             c.config.read_timeout
+		write_timeout:            c.config.write_timeout
+		disable_connection_reuse: c.config.disable_connection_reuse
 	)!
 	if response.status_code >= 400 {
 		return decode_error_response(response.status_code, response.body)
@@ -92,11 +96,12 @@ fn (c &Client) get(path string) !string {
 // delete sends a DELETE and returns the response body.
 fn (c &Client) delete(path string) !string {
 	response := http.fetch(
-		method:        .delete
-		url:           c.url(path)
-		header:        c.header()
-		read_timeout:  c.config.read_timeout
-		write_timeout: c.config.write_timeout
+		method:                   .delete
+		url:                      c.url(path)
+		header:                   c.header()
+		read_timeout:             c.config.read_timeout
+		write_timeout:            c.config.write_timeout
+		disable_connection_reuse: c.config.disable_connection_reuse
 	)!
 	if response.status_code >= 400 {
 		return decode_error_response(response.status_code, response.body)
@@ -110,12 +115,13 @@ fn (c &Client) post_with_content_type(path string, payload string, content_type 
 	mut header := c.header()
 	header.set(.content_type, content_type)
 	response := http.fetch(
-		method:        .post
-		url:           c.url(path)
-		data:          payload
-		header:        header
-		read_timeout:  c.config.read_timeout
-		write_timeout: c.config.write_timeout
+		method:                   .post
+		url:                      c.url(path)
+		data:                     payload
+		header:                   header
+		read_timeout:             c.config.read_timeout
+		write_timeout:            c.config.write_timeout
+		disable_connection_reuse: c.config.disable_connection_reuse
 	)!
 	if response.status_code >= 400 {
 		return decode_error_response(response.status_code, response.body)
@@ -127,12 +133,13 @@ fn (c &Client) post_with_content_type(path string, payload string, content_type 
 // decoded into ApiError.
 fn (c &Client) post(path string, payload string) !string {
 	response := http.fetch(
-		method:        .post
-		url:           c.url(path)
-		data:          payload
-		header:        c.header()
-		read_timeout:  c.config.read_timeout
-		write_timeout: c.config.write_timeout
+		method:                   .post
+		url:                      c.url(path)
+		data:                     payload
+		header:                   c.header()
+		read_timeout:             c.config.read_timeout
+		write_timeout:            c.config.write_timeout
+		disable_connection_reuse: c.config.disable_connection_reuse
 	)!
 	if response.status_code >= 400 {
 		return decode_error_response(response.status_code, response.body)
@@ -165,14 +172,15 @@ fn (c &Client) post_stream[T](path string, payload string, context T, on_chunk f
 		on_chunk: on_chunk
 	}
 	response := http.fetch(
-		method:           .post
-		url:              c.url(path)
-		data:             payload
-		header:           c.header()
-		read_timeout:     c.config.read_timeout
-		write_timeout:    c.config.write_timeout
-		user_ptr:         ctx
-		on_progress_body: stream_trampoline[T]
+		method:                   .post
+		url:                      c.url(path)
+		data:                     payload
+		header:                   c.header()
+		read_timeout:             c.config.read_timeout
+		write_timeout:            c.config.write_timeout
+		user_ptr:                 ctx
+		on_progress_body:         stream_trampoline[T]
+		disable_connection_reuse: c.config.disable_connection_reuse
 	)!
 	if response.status_code >= 400 {
 		return decode_error_response(response.status_code, response.body)

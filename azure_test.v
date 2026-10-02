@@ -6,9 +6,10 @@ fn test_azure_client_uses_api_key_header_and_version_query() {
 		mock.listener.close() or {}
 	}
 	client := new_azure_client(
-		api_key:    'azure-key'
-		endpoint:   mock.base_url().all_before('/v1')
-		deployment: 'my-deployment'
+		api_key:                  'azure-key'
+		endpoint:                 mock.base_url().all_before('/v1')
+		deployment:               'my-deployment'
+		disable_connection_reuse: true
 	)
 
 	response := client.create_chat_completion(ChatCompletionRequest{

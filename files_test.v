@@ -9,8 +9,11 @@ fn test_upload_file_sends_a_multipart_body() {
 		mock.listener.close() or {}
 	}
 	client := new_client(
-		api_key:  'sk-test'
-		base_url: mock.base_url()
+		api_key:                  'sk-test'
+		base_url:                 mock.base_url()
+		// The mocks below are one-purpose loopback servers; keep net.http's
+		// keep-alive pool from reusing a stale connection across them.
+		disable_connection_reuse: true
 	)
 
 	file := client.upload_file('batch', 'data.jsonl', '{"a":1}\n{"a":2}\n'.bytes())!
@@ -28,8 +31,11 @@ fn test_create_transcription_sends_the_model_field() {
 		mock.listener.close() or {}
 	}
 	client := new_client(
-		api_key:  'sk-test'
-		base_url: mock.base_url()
+		api_key:                  'sk-test'
+		base_url:                 mock.base_url()
+		// The mocks below are one-purpose loopback servers; keep net.http's
+		// keep-alive pool from reusing a stale connection across them.
+		disable_connection_reuse: true
 	)
 
 	text := client.create_transcription(TranscriptionRequest{
