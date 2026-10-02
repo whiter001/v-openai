@@ -15,6 +15,10 @@ mut:
 	request_lines chan string
 }
 
+const mock_chat_body = '{"id":"chatcmpl-mock","object":"chat.completion","created":1740000000,"model":"gpt-4o-mini","choices":[{"index":0,"message":{"role":"assistant","content":"Hello!"},"finish_reason":"stop"}],"usage":{"prompt_tokens":8,"completion_tokens":11,"total_tokens":19}}'
+
+const mock_stream_body = 'data: {"id":"chatcmpl-mock","object":"chat.completion.chunk","created":1740000000,"model":"gpt-4o-mini","choices":[{"index":0,"delta":{"role":"assistant","content":"Hel"},"finish_reason":null}]}\n\ndata: {"id":"chatcmpl-mock","object":"chat.completion.chunk","created":1740000000,"model":"gpt-4o-mini","choices":[{"index":0,"delta":{"content":"lo"},"finish_reason":null}]}\n\ndata: {"id":"chatcmpl-mock","object":"chat.completion.chunk","created":1740000000,"model":"gpt-4o-mini","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n'
+
 fn start_mock_server(status_line string, content_type string, response_body string) &MockServer {
 	mut listener := net.listen_tcp(.ip, ':0') or { panic(err) }
 	mock := &MockServer{

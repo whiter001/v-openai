@@ -1,7 +1,15 @@
 module openai
 
 import net.http
+import net.urllib
 import time
+
+// AuthStyle selects how the API key is sent: the usual
+// `Authorization: Bearer` header, or Azure's `api-key` header.
+pub enum AuthStyle {
+	bearer
+	api_key
+}
 
 // ClientConfig configures a Client. Point `base_url` at any OpenAI-compatible
 // endpoint (DeepSeek, Kimi, GLM, Ollama, ...) to use it instead of OpenAI.
@@ -10,6 +18,9 @@ pub:
 	api_key      string @[required]
 	base_url     string = 'https://api.openai.com/v1'
 	organization string
+	auth_style   AuthStyle = .bearer
+	// query_params are appended to every request URL (Azure's api-version).
+	query_params map[string]string
 	// read_timeout bounds reading one response; keep it generous, streams are
 	// long-lived by design.
 	read_timeout  i64 = 300 * time.second
@@ -33,13 +44,28 @@ pub fn new_client(config ClientConfig) Client {
 }
 
 fn (c &Client) url(path string) string {
-	return c.config.base_url.trim_right('/') + path
+	url := c.config.base_url.trim_right('/') + path
+	if c.config.query_params.len == 0 {
+		return url
+	}
+	mut pairs := []string{cap: c.config.query_params.len}
+	for key, value in c.config.query_params {
+		pairs << '${urllib.query_escape(key)}=${urllib.query_escape(value)}'
+	}
+	return '${url}?${pairs.join('&')}'
 }
 
 fn (c &Client) header() http.Header {
 	mut header := http.new_header()
 	header.set(.content_type, 'application/json')
-	header.set(.authorization, 'Bearer ${c.config.api_key}')
+	match c.config.auth_style {
+		.bearer {
+			header.set(.authorization, 'Bearer ${c.config.api_key}')
+		}
+		.api_key {
+			header.set_custom('api-key', c.config.api_key) or {}
+		}
+	}
 	if c.config.organization != '' {
 		header.set_custom('OpenAI-Organization', c.config.organization) or {}
 	}
@@ -54,6 +80,40 @@ fn (c &Client) get(path string) !string {
 		method:        .get
 		url:           c.url(path)
 		header:        c.header()
+		read_timeout:  c.config.read_timeout
+		write_timeout: c.config.write_timeout
+	)!
+	if response.status_code >= 400 {
+		return decode_error_response(response.status_code, response.body)
+	}
+	return response.body
+}
+
+// delete sends a DELETE and returns the response body.
+fn (c &Client) delete(path string) !string {
+	response := http.fetch(
+		method:        .delete
+		url:           c.url(path)
+		header:        c.header()
+		read_timeout:  c.config.read_timeout
+		write_timeout: c.config.write_timeout
+	)!
+	if response.status_code >= 400 {
+		return decode_error_response(response.status_code, response.body)
+	}
+	return response.body
+}
+
+// post_with_content_type posts a pre-encoded body with an explicit content
+// type (multipart uploads).
+fn (c &Client) post_with_content_type(path string, payload string, content_type string) !string {
+	mut header := c.header()
+	header.set(.content_type, content_type)
+	response := http.fetch(
+		method:        .post
+		url:           c.url(path)
+		data:          payload
+		header:        header
 		read_timeout:  c.config.read_timeout
 		write_timeout: c.config.write_timeout
 	)!
