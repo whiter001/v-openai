@@ -168,27 +168,39 @@ pub fn (c &Client) create_response(request CreateResponseRequest) !Response {
 	return json.decode[Response](body)!
 }
 
-// ResponseStreamState threads the SSE parser and caller context through
-// post_stream, latching when a terminal event arrives. The callback is
-// stored type-erased; adapters cast it back, since generic fn values do
-// not compile on older V versions.
-struct ResponseStreamState {
-mut:
-	parser   SseParser
-	context  voidptr
-	callback voidptr = unsafe { nil }
-	done     bool
+// ResponseStreamCaller is the interface between the type-erased stream
+// state and the caller's typed callback. Interface dispatch is used
+// instead of casting function pointers: generic fn values do not compile
+// on older V versions, and raw fn pointer casts crash there at runtime.
+interface ResponseStreamCaller {
+	call(ResponseStreamEvent)
 }
 
-// ResponseEventFn is the type-erased form of the stream callback.
-type ResponseEventFn = fn (voidptr, ResponseStreamEvent)
+// ResponseCallbackAdapter adapts a (context, callback) pair to
+// ResponseStreamCaller.
+struct ResponseCallbackAdapter[T] {
+	context  T
+	callback fn (T, ResponseStreamEvent)
+}
+
+fn (adapter ResponseCallbackAdapter[T]) call(event ResponseStreamEvent) {
+	adapter.callback(adapter.context, event)
+}
+
+// ResponseStreamState threads the SSE parser and the caller through
+// post_stream, latching when a terminal event arrives.
+struct ResponseStreamState {
+mut:
+	parser SseParser
+	caller ResponseStreamCaller
+	done   bool
+}
 
 fn response_chunk_adapter(state_ptr voidptr, raw_chunk string) {
 	mut state := unsafe { &ResponseStreamState(state_ptr) }
 	if state.done {
 		return
 	}
-	callback := unsafe { ResponseEventFn(state.callback) }
 	for payload in state.parser.feed(raw_chunk) {
 		if payload.trim_space() == '[DONE]' {
 			state.done = true
@@ -198,7 +210,7 @@ fn response_chunk_adapter(state_ptr voidptr, raw_chunk string) {
 			if event.is_terminal() {
 				state.done = true
 			}
-			callback(state.context, event)
+			state.caller.call(event)
 			if state.done {
 				return
 			}
@@ -211,8 +223,10 @@ fn response_chunk_adapter(state_ptr voidptr, raw_chunk string) {
 // (response.completed, response.failed or error) arrives.
 pub fn (c &Client) create_response_stream[T](request CreateResponseRequest, context T, callback fn (T, ResponseStreamEvent)) ! {
 	mut state := &ResponseStreamState{
-		context:  voidptr(context)
-		callback: voidptr(callback)
+		caller: ResponseCallbackAdapter[T]{
+			context:  context
+			callback: callback
+		}
 	}
 	payload := encode_response_request(CreateResponseRequest{
 		...request

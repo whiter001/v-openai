@@ -134,33 +134,44 @@ pub:
 	arguments string @[omitempty]
 }
 
-// ChatStreamState threads the SSE parser and caller context through
-// post_stream. The callback is stored type-erased; adapters cast it back,
-// since generic fn values do not compile on older V versions.
-struct ChatStreamState {
-mut:
-	parser   SseParser
-	context  voidptr
-	callback voidptr = unsafe { nil }
-	done     bool
+// ChatStreamCaller is the interface between the type-erased stream state
+// and the caller's typed callback. Interface dispatch is used instead of
+// casting function pointers: generic fn values do not compile on older V
+// versions, and raw fn pointer casts crash there at runtime.
+interface ChatStreamCaller {
+	call(ChatCompletionChunk)
 }
 
-// ChatChunkFn is the type-erased form of the stream callback.
-type ChatChunkFn = fn (voidptr, ChatCompletionChunk)
+// ChatCallbackAdapter adapts a (context, callback) pair to ChatStreamCaller.
+struct ChatCallbackAdapter[T] {
+	context  T
+	callback fn (T, ChatCompletionChunk)
+}
+
+fn (adapter ChatCallbackAdapter[T]) call(chunk ChatCompletionChunk) {
+	adapter.callback(adapter.context, chunk)
+}
+
+// ChatStreamState threads the SSE parser and the caller through post_stream.
+struct ChatStreamState {
+mut:
+	parser SseParser
+	caller ChatStreamCaller
+	done   bool
+}
 
 fn chat_chunk_adapter(state_ptr voidptr, raw_chunk string) {
 	mut state := unsafe { &ChatStreamState(state_ptr) }
 	if state.done {
 		return
 	}
-	callback := unsafe { ChatChunkFn(state.callback) }
 	for payload in state.parser.feed(raw_chunk) {
 		if payload.trim_space() == '[DONE]' {
 			state.done = true
 			return
 		}
 		if completion_chunk := json.decode[ChatCompletionChunk](payload) {
-			callback(state.context, completion_chunk)
+			state.caller.call(completion_chunk)
 		}
 	}
 }
@@ -177,8 +188,10 @@ pub fn (c &Client) create_chat_completion(request ChatCompletionRequest) !ChatCo
 // be a plain function (closures in struct fields lose their captures).
 pub fn (c &Client) create_chat_completion_stream[T](request ChatCompletionRequest, context T, callback fn (T, ChatCompletionChunk)) ! {
 	mut state := &ChatStreamState{
-		context:  voidptr(context)
-		callback: voidptr(callback)
+		caller: ChatCallbackAdapter[T]{
+			context:  context
+			callback: callback
+		}
 	}
 	payload := encode_chat_request(ChatCompletionRequest{
 		...request
