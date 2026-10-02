@@ -151,23 +151,24 @@ fn (c &Client) post(path string, payload string) !string {
 // Request.user_ptr: net.http invokes plain function pointers for its
 // streaming callbacks, so user state travels via the trampoline below.
 // (Closures stored in struct fields lose their captured context, which is
-// why the API takes an explicit context instead of a closure.)
-struct StreamContext[T] {
+// why the API takes an explicit context instead of a closure. Everything
+// past this boundary is type-erased: passing a generic fn as a value does
+// not compile on older V versions.)
+struct StreamContext {
 mut:
-	context  T
-	on_chunk fn (T, string) = unsafe { nil }
+	context  voidptr
+	on_chunk fn (voidptr, string) = unsafe { nil }
 }
 
-fn stream_trampoline[T](req &http.Request, chunk []u8, _ u64, _ u64, _ int) ! {
-	mut ctx := unsafe { &StreamContext[T](req.user_ptr) }
+fn stream_trampoline(req &http.Request, chunk []u8, _ u64, _ u64, _ int) ! {
+	mut ctx := unsafe { &StreamContext(req.user_ptr) }
 	ctx.on_chunk(ctx.context, chunk.bytestr())
 }
 
 // post_stream sends a JSON POST and forwards every response body chunk to
 // `on_chunk` as it arrives, which is what `stream: true` endpoints need.
-// Pass a reference type as `context` to observe mutations.
-fn (c &Client) post_stream[T](path string, payload string, context T, on_chunk fn (T, string)) !string {
-	mut ctx := &StreamContext[T]{
+fn (c &Client) post_stream(path string, payload string, context voidptr, on_chunk fn (voidptr, string)) !string {
+	mut ctx := &StreamContext{
 		context:  context
 		on_chunk: on_chunk
 	}
@@ -179,7 +180,7 @@ fn (c &Client) post_stream[T](path string, payload string, context T, on_chunk f
 		read_timeout:             c.config.read_timeout
 		write_timeout:            c.config.write_timeout
 		user_ptr:                 ctx
-		on_progress_body:         stream_trampoline[T]
+		on_progress_body:         stream_trampoline
 		disable_connection_reuse: c.config.disable_connection_reuse
 	)!
 	if response.status_code >= 400 {

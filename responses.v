@@ -169,19 +169,26 @@ pub fn (c &Client) create_response(request CreateResponseRequest) !Response {
 }
 
 // ResponseStreamState threads the SSE parser and caller context through
-// post_stream, latching when a terminal event arrives.
-struct ResponseStreamState[T] {
+// post_stream, latching when a terminal event arrives. The callback is
+// stored type-erased; adapters cast it back, since generic fn values do
+// not compile on older V versions.
+struct ResponseStreamState {
 mut:
 	parser   SseParser
-	context  T
-	callback fn (T, ResponseStreamEvent) = unsafe { nil }
+	context  voidptr
+	callback voidptr = unsafe { nil }
 	done     bool
 }
 
-fn response_chunk_adapter[T](mut state ResponseStreamState[T], raw_chunk string) {
+// ResponseEventFn is the type-erased form of the stream callback.
+type ResponseEventFn = fn (voidptr, ResponseStreamEvent)
+
+fn response_chunk_adapter(state_ptr voidptr, raw_chunk string) {
+	mut state := unsafe { &ResponseStreamState(state_ptr) }
 	if state.done {
 		return
 	}
+	callback := unsafe { ResponseEventFn(state.callback) }
 	for payload in state.parser.feed(raw_chunk) {
 		if payload.trim_space() == '[DONE]' {
 			state.done = true
@@ -191,7 +198,7 @@ fn response_chunk_adapter[T](mut state ResponseStreamState[T], raw_chunk string)
 			if event.is_terminal() {
 				state.done = true
 			}
-			state.callback(state.context, event)
+			callback(state.context, event)
 			if state.done {
 				return
 			}
@@ -203,15 +210,15 @@ fn response_chunk_adapter[T](mut state ResponseStreamState[T], raw_chunk string)
 // `callback` with `context` for every event until a terminal event
 // (response.completed, response.failed or error) arrives.
 pub fn (c &Client) create_response_stream[T](request CreateResponseRequest, context T, callback fn (T, ResponseStreamEvent)) ! {
-	mut state := &ResponseStreamState[T]{
-		context:  context
-		callback: callback
+	mut state := &ResponseStreamState{
+		context:  voidptr(context)
+		callback: voidptr(callback)
 	}
 	payload := encode_response_request(CreateResponseRequest{
 		...request
 		stream: true
 	})
-	c.post_stream('/responses', payload, state, response_chunk_adapter[T])!
+	c.post_stream('/responses', payload, state, response_chunk_adapter)!
 }
 
 fn encode_response_request(request CreateResponseRequest) string {

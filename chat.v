@@ -134,27 +134,33 @@ pub:
 	arguments string @[omitempty]
 }
 
-// ChatStreamState threads the SSE parser and the caller's context through
-// post_stream. `done` latches once the server sends `[DONE]`.
-struct ChatStreamState[T] {
+// ChatStreamState threads the SSE parser and caller context through
+// post_stream. The callback is stored type-erased; adapters cast it back,
+// since generic fn values do not compile on older V versions.
+struct ChatStreamState {
 mut:
 	parser   SseParser
-	context  T
-	callback fn (T, ChatCompletionChunk) = unsafe { nil }
+	context  voidptr
+	callback voidptr = unsafe { nil }
 	done     bool
 }
 
-fn chat_chunk_adapter[T](mut state ChatStreamState[T], raw_chunk string) {
+// ChatChunkFn is the type-erased form of the stream callback.
+type ChatChunkFn = fn (voidptr, ChatCompletionChunk)
+
+fn chat_chunk_adapter(state_ptr voidptr, raw_chunk string) {
+	mut state := unsafe { &ChatStreamState(state_ptr) }
 	if state.done {
 		return
 	}
+	callback := unsafe { ChatChunkFn(state.callback) }
 	for payload in state.parser.feed(raw_chunk) {
 		if payload.trim_space() == '[DONE]' {
 			state.done = true
 			return
 		}
 		if completion_chunk := json.decode[ChatCompletionChunk](payload) {
-			state.callback(state.context, completion_chunk)
+			callback(state.context, completion_chunk)
 		}
 	}
 }
@@ -170,15 +176,15 @@ pub fn (c &Client) create_chat_completion(request ChatCompletionRequest) !ChatCo
 // Pass a reference type as `context` to observe mutations; the callback must
 // be a plain function (closures in struct fields lose their captures).
 pub fn (c &Client) create_chat_completion_stream[T](request ChatCompletionRequest, context T, callback fn (T, ChatCompletionChunk)) ! {
-	mut state := &ChatStreamState[T]{
-		context:  context
-		callback: callback
+	mut state := &ChatStreamState{
+		context:  voidptr(context)
+		callback: voidptr(callback)
 	}
 	payload := encode_chat_request(ChatCompletionRequest{
 		...request
 		stream: true
 	})
-	c.post_stream('/chat/completions', payload, state, chat_chunk_adapter[T])!
+	c.post_stream('/chat/completions', payload, state, chat_chunk_adapter)!
 }
 
 // encode_chat_request renders the request by hand: only explicitly set
