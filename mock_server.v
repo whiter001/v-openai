@@ -30,10 +30,16 @@ fn start_mock_server(status_line string, content_type string, response_body stri
 }
 
 fn (mut mock MockServer) serve(status_line string, content_type string, response_body string) {
-	mut conn := mock.listener.accept() or { return }
-	defer {
+	// Serve until the listener is closed: the HTTP client may legitimately
+	// open more than one connection (retries, pool probes).
+	for {
+		mut conn := mock.listener.accept() or { break }
+		mock.serve_one(mut conn, status_line, content_type, response_body)
 		conn.close() or {}
 	}
+}
+
+fn (mut mock MockServer) serve_one(mut conn net.TcpConn, status_line string, content_type string, response_body string) {
 	mut reader := io.new_buffered_reader(reader: conn)
 	for {
 		line := reader.read_line() or { break }

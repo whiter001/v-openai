@@ -7,7 +7,7 @@ fn test_azure_client_uses_api_key_header_and_version_query() {
 	}
 	client := new_azure_client(
 		api_key:    'azure-key'
-		endpoint:   mock.base_url().trim_right('/v1')
+		endpoint:   mock.base_url().all_before('/v1')
 		deployment: 'my-deployment'
 	)
 
