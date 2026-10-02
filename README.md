@@ -20,6 +20,14 @@ Ollama**, vLLM, etc. — by changing `base_url`.
 v install whiter001.openai
 ```
 
+Then import it with its full vpm name (the module binds as `openai`):
+
+```v
+import whiter001.openai
+```
+
+(Inside this repository, `v link` lets the examples use plain `import openai`.)
+
 ## Quick start
 
 ```v
