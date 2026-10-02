@@ -145,7 +145,7 @@ interface ChatStreamCaller {
 // ChatCallbackAdapter adapts a (context, callback) pair to ChatStreamCaller.
 struct ChatCallbackAdapter[T] {
 	context  T
-	callback fn (T, ChatCompletionChunk)
+	callback fn (T, ChatCompletionChunk) = unsafe { nil }
 }
 
 fn (adapter ChatCallbackAdapter[T]) call(chunk ChatCompletionChunk) {

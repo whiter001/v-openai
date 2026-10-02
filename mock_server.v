@@ -43,6 +43,7 @@ fn (mut mock MockServer) serve(status_line string, content_type string, response
 
 fn (mut mock MockServer) serve_one(mut conn net.TcpConn, status_line string, content_type string, response_body string) {
 	mut reader := io.new_buffered_reader(reader: conn)
+	mut content_length := 0
 	mut first := true
 	for {
 		line := reader.read_line() or { break }
@@ -50,11 +51,28 @@ fn (mut mock MockServer) serve_one(mut conn net.TcpConn, status_line string, con
 		if trimmed == '' {
 			break
 		}
+		if trimmed.to_lower().starts_with('content-length:') {
+			content_length = trimmed.all_after(':').trim_space().int()
+		}
 		if first {
 			first = false
 			eprintln('[mock ${mock.listener.addr() or { return }}] ${trimmed}')
 		}
 		mock.request_lines <- trimmed
+	}
+	// Drain the request body before responding: closing an exchange with
+	// unread request bytes lets the kernel RST the connection, which eats
+	// the response on some platforms.
+	if content_length > 0 {
+		mut drain := []u8{len: 4096}
+		mut remaining := content_length
+		for remaining > 0 {
+			n := reader.read(mut drain) or { break }
+			if n == 0 {
+				break
+			}
+			remaining -= n
+		}
 	}
 	response := '${status_line}\r\nContent-Type: ${content_type}\r\nContent-Length: ${response_body.len}\r\nConnection: close\r\n\r\n${response_body}'
 	conn.write_string(response) or {}

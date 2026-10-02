@@ -180,7 +180,7 @@ interface ResponseStreamCaller {
 // ResponseStreamCaller.
 struct ResponseCallbackAdapter[T] {
 	context  T
-	callback fn (T, ResponseStreamEvent)
+	callback fn (T, ResponseStreamEvent) = unsafe { nil }
 }
 
 fn (adapter ResponseCallbackAdapter[T]) call(event ResponseStreamEvent) {
