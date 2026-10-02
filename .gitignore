@@ -1,0 +1,6 @@
+*.exe
+*.tmp.c
+/examples/chat
+/examples/stream
+/examples/tool_call
+/examples/backends

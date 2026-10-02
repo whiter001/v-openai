@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: vlang/setup-v@main
+      - name: Format check
+        run: v fmt -verify .
+      - name: Test
+        run: v -stats test .
+      - name: Link module
+        run: v link
+      - name: Build examples
+        run: |
+          for f in examples/*.v; do v -check "$f" || exit 1; done
+        shell: bash
