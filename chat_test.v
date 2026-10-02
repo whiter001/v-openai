@@ -59,6 +59,30 @@ fn test_encode_chat_request_renders_tool_call_history() {
 	assert encoded.contains('"tool_call_id":"call_1"')
 }
 
+fn test_encode_chat_request_renders_multimodal_content() {
+	encoded := encode_chat_request(ChatCompletionRequest{
+		model:    'gpt-4o-mini'
+		messages: [
+			user_message_parts([
+				text_part('What is in this image?'),
+				image_part('https://example.com/cat.png'),
+				image_part_with_detail('data:image/png;base64,aGVsbG8=', 'high'),
+			]),
+		]
+	})
+	assert encoded.contains('"content":[{"type":"text","text":"What is in this image?"}')
+	assert encoded.contains('{"type":"image_url","image_url":{"url":"https://example.com/cat.png"}}')
+	assert encoded.contains('{"type":"image_url","image_url":{"url":"data:image/png;base64,aGVsbG8=","detail":"high"}}')
+}
+
+fn test_encode_chat_request_renders_audio_content() {
+	encoded := encode_chat_request(ChatCompletionRequest{
+		model:    'gpt-4o-audio-preview'
+		messages: [user_message_parts([audio_part('aGVsbG8=', 'wav')])]
+	})
+	assert encoded.contains('{"type":"input_audio","input_audio":{"data":"aGVsbG8=","format":"wav"}}')
+}
+
 fn test_decode_chat_completion_response() {
 	body := '{"id":"chatcmpl-1","object":"chat.completion","created":1740000000,"model":"gpt-4o-mini","choices":[{"index":0,"message":{"role":"assistant","content":"Hello!"},"finish_reason":"stop"}],"usage":{"prompt_tokens":8,"completion_tokens":11,"total_tokens":19}}'
 	response := json.decode[ChatCompletionResponse](body)!

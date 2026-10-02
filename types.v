@@ -1,14 +1,91 @@
 module openai
 
 // ChatMessage is a single message in a chat conversation. `content` is none
-// for assistant messages that only carry tool calls.
+// for assistant messages that only carry tool calls; `multi_content` carries
+// multimodal input (text, images, audio) and takes precedence over `content`
+// when set.
 pub struct ChatMessage {
 pub:
-	role         string
-	content      ?string
-	name         string     @[omitempty]
-	tool_calls   []ToolCall @[omitempty]
-	tool_call_id string     @[omitempty]
+	role          string
+	content       ?string
+	name          string        @[omitempty]
+	tool_calls    []ToolCall    @[omitempty]
+	tool_call_id  string        @[omitempty]
+	multi_content []ContentPart @[omitempty]
+}
+
+// ContentPart is one part of a multimodal `content` array. `type` is 'text',
+// 'image_url' or 'input_audio'; only the matching payload field is used.
+pub struct ContentPart {
+pub:
+	@type       string
+	text        string
+	image_url   ImageURL
+	input_audio InputAudio
+}
+
+// ImageURL addresses an image by URL or base64 data URI. `detail` is 'auto',
+// 'low' or 'high'; empty means the API default ('auto').
+pub struct ImageURL {
+pub:
+	url    string
+	detail string @[omitempty]
+}
+
+// InputAudio carries base64 encoded audio. `format` is 'wav' or 'mp3'.
+pub struct InputAudio {
+pub:
+	data   string
+	format string
+}
+
+// text_part builds a text ContentPart.
+pub fn text_part(text string) ContentPart {
+	return ContentPart{
+		@type: 'text'
+		text:  text
+	}
+}
+
+// image_part builds an image ContentPart with the default ('auto') detail.
+pub fn image_part(url string) ContentPart {
+	return ContentPart{
+		@type:     'image_url'
+		image_url: ImageURL{
+			url: url
+		}
+	}
+}
+
+// image_part_with_detail builds an image ContentPart with an explicit detail
+// level ('low' or 'high').
+pub fn image_part_with_detail(url string, detail string) ContentPart {
+	return ContentPart{
+		@type:     'image_url'
+		image_url: ImageURL{
+			url:    url
+			detail: detail
+		}
+	}
+}
+
+// audio_part builds an input_audio ContentPart from base64 encoded audio.
+pub fn audio_part(data string, format string) ContentPart {
+	return ContentPart{
+		@type:       'input_audio'
+		input_audio: InputAudio{
+			data:   data
+			format: format
+		}
+	}
+}
+
+// user_message_parts builds a multimodal user ChatMessage.
+pub fn user_message_parts(parts []ContentPart) ChatMessage {
+	return ChatMessage{
+		role:          'user'
+		multi_content: parts
+	}
 }
 
 // system_message builds a system ChatMessage.

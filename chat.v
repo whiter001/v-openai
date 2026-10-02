@@ -191,7 +191,9 @@ fn encode_chat_messages(messages []ChatMessage) string {
 	mut encoded := []string{cap: messages.len}
 	for message in messages {
 		mut fields := ['"role":${json.encode(message.role)}']
-		if content := message.content {
+		if message.multi_content.len != 0 {
+			fields << '"content":${encode_content_parts(message.multi_content)}'
+		} else if content := message.content {
 			fields << '"content":${json.encode(content)}'
 		} else {
 			fields << '"content":null'
@@ -206,6 +208,29 @@ fn encode_chat_messages(messages []ChatMessage) string {
 			fields << '"tool_call_id":${json.encode(message.tool_call_id)}'
 		}
 		encoded << '{${fields.join(',')}}'
+	}
+	return '[${encoded.join(',')}]'
+}
+
+// encode_content_parts renders a multimodal content array.
+fn encode_content_parts(parts []ContentPart) string {
+	mut encoded := []string{cap: parts.len}
+	for part in parts {
+		encoded << match part.@type {
+			'image_url' {
+				mut payload := ['"url":${json.encode(part.image_url.url)}']
+				if part.image_url.detail != '' {
+					payload << '"detail":${json.encode(part.image_url.detail)}'
+				}
+				'{"type":"image_url","image_url":{${payload.join(',')}}}'
+			}
+			'input_audio' {
+				'{"type":"input_audio","input_audio":{"data":${json.encode(part.input_audio.data)},"format":${json.encode(part.input_audio.format)}}}'
+			}
+			else {
+				'{"type":${json.encode(part.@type)},"text":${json.encode(part.text)}}'
+			}
+		}
 	}
 	return '[${encoded.join(',')}]'
 }
