@@ -18,13 +18,31 @@ pub mut:
 	frequency_penalty ?f64
 	logit_bias        map[string]int
 	user              string
+	seed              ?int
+	service_tier      string
+	store             ?bool
+	metadata          map[string]string
+	logprobs          ?bool
+	top_logprobs      ?int
 	tools             []Tool
 	// tool_choice is 'auto', 'none' or 'required'; empty uses the API default.
-	tool_choice     string
-	response_format ?ResponseFormat
+	tool_choice string
+	// tool_choice_function forces one named tool and takes precedence over
+	// tool_choice.
+	tool_choice_function string
+	parallel_tool_calls  ?bool
+	response_format      ?ResponseFormat
 	// reasoning_effort is 'low', 'medium' or 'high'; empty uses the API default.
 	reasoning_effort string
 	stream           bool
+	// stream_options adds e.g. usage reporting to the final stream chunk.
+	stream_options ?StreamOptions
+}
+
+// StreamOptions configures a streaming request.
+pub struct StreamOptions {
+pub:
+	include_usage bool
 }
 
 // ChatCompletionResponse is the non-streaming answer of the chat endpoint.
@@ -44,9 +62,35 @@ pub:
 	index         int
 	message       ChatMessage
 	finish_reason string
+	logprobs      LogProbs
+}
+
+// LogProbs carries the log probability information of a choice.
+pub struct LogProbs {
+pub:
+	content []LogProb
+}
+
+// LogProb is one sampled token with its most likely alternatives.
+pub struct LogProb {
+pub:
+	token        string
+	logprob      f64
+	bytes        []int
+	top_logprobs []TopLogProb
+}
+
+// TopLogProb is one alternative token and its log probability.
+pub struct TopLogProb {
+pub:
+	token   string
+	logprob f64
+	bytes   []int
 }
 
 // ChatCompletionChunk is one server-sent event of a streaming completion.
+// `usage` is set only on the final chunk of a stream requested with
+// `StreamOptions{ include_usage: true }`.
 pub struct ChatCompletionChunk {
 pub:
 	id      string
@@ -54,6 +98,7 @@ pub:
 	created i64
 	model   string
 	choices []ChatChunkChoice
+	usage   ?Usage
 }
 
 // ChatChunkChoice is one choice of a ChatCompletionChunk.
@@ -169,20 +214,67 @@ fn encode_chat_request(request ChatCompletionRequest) string {
 	if request.user != '' {
 		fields << '"user":${json.encode(request.user)}'
 	}
+	if seed := request.seed {
+		fields << '"seed":${seed}'
+	}
+	if request.service_tier != '' {
+		fields << '"service_tier":${json.encode(request.service_tier)}'
+	}
+	if store := request.store {
+		fields << '"store":${store}'
+	}
+	if request.metadata.len != 0 {
+		fields << '"metadata":${json.encode(request.metadata)}'
+	}
+	if logprobs := request.logprobs {
+		fields << '"logprobs":${logprobs}'
+	}
+	if top_logprobs := request.top_logprobs {
+		fields << '"top_logprobs":${top_logprobs}'
+	}
 	if request.tools.len != 0 {
 		fields << '"tools":${encode_tools(request.tools)}'
 	}
-	if request.tool_choice != '' {
+	if request.tool_choice_function != '' {
+		fields << '"tool_choice":{"type":"function","function":{"name":${json.encode(request.tool_choice_function)}}}'
+	} else if request.tool_choice != '' {
 		fields << '"tool_choice":${json.encode(request.tool_choice)}'
 	}
+	if parallel_tool_calls := request.parallel_tool_calls {
+		fields << '"parallel_tool_calls":${parallel_tool_calls}'
+	}
 	if format := request.response_format {
-		fields << '"response_format":{"type":${json.encode(format.@type)}}'
+		fields << '"response_format":${encode_response_format(format)}'
 	}
 	if request.reasoning_effort != '' {
 		fields << '"reasoning_effort":${json.encode(request.reasoning_effort)}'
 	}
 	if request.stream {
 		fields << '"stream":true'
+	}
+	if options := request.stream_options {
+		fields << '"stream_options":{"include_usage":${options.include_usage}}'
+	}
+	return '{${fields.join(',')}}'
+}
+
+// encode_response_format renders a ResponseFormat, embedding the raw schema
+// document of a 'json_schema' format verbatim.
+fn encode_response_format(format ResponseFormat) string {
+	mut fields := ['"type":${json.encode(format.@type)}']
+	if format.json_schema.name != '' {
+		mut schema_fields := ['"name":${json.encode(format.json_schema.name)}']
+		if format.json_schema.description != '' {
+			schema_fields << '"description":${json.encode(format.json_schema.description)}'
+		}
+		schema := format.json_schema.schema.trim_space()
+		if schema.starts_with('{') {
+			schema_fields << '"schema":${schema}'
+		}
+		if strict := format.json_schema.strict {
+			schema_fields << '"strict":${strict}'
+		}
+		fields << '"json_schema":{${schema_fields.join(',')}}'
 	}
 	return '{${fields.join(',')}}'
 }

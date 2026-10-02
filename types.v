@@ -173,8 +173,32 @@ pub:
 }
 
 // ResponseFormat selects the output format, for example
-// `ResponseFormat{ @type: 'json_object' }` for JSON mode.
+// `ResponseFormat{ @type: 'json_object' }` for JSON mode, or
+// `json_schema_format(...)` for structured outputs.
 pub struct ResponseFormat {
 pub:
-	@type string @[json: 'type']
+	@type       string @[json: 'type']
+	json_schema JsonSchema
+}
+
+// JsonSchema is the structured-output definition of a 'json_schema'
+// ResponseFormat. `schema` is a JSON Schema document, embedded verbatim.
+pub struct JsonSchema {
+pub:
+	name        string
+	description string
+	schema      string
+	strict      ?bool
+}
+
+// json_schema_format builds a structured-output ResponseFormat.
+pub fn json_schema_format(name string, schema_json string, strict bool) ResponseFormat {
+	return ResponseFormat{
+		@type:       'json_schema'
+		json_schema: JsonSchema{
+			name:   name
+			schema: schema_json
+			strict: strict
+		}
+	}
 }

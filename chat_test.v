@@ -83,6 +83,79 @@ fn test_encode_chat_request_renders_audio_content() {
 	assert encoded.contains('{"type":"input_audio","input_audio":{"data":"aGVsbG8=","format":"wav"}}')
 }
 
+fn test_encode_chat_request_renders_json_schema_format() {
+	encoded := encode_chat_request(ChatCompletionRequest{
+		model:           'gpt-4o-mini'
+		messages:        [user_message('extract')]
+		response_format: json_schema_format('person', '{"type":"object","properties":{"name":{"type":"string"}}}',
+			true)
+	})
+	assert encoded.contains('"response_format":{"type":"json_schema"')
+	assert encoded.contains('"name":"person"')
+	assert encoded.contains('"schema":{"type":"object","properties":{"name":{"type":"string"}}}')
+	assert encoded.contains('"strict":true')
+}
+
+fn test_encode_chat_request_renders_tool_choice_function_and_parallel_flag() {
+	encoded := encode_chat_request(ChatCompletionRequest{
+		model:                'gpt-4o-mini'
+		messages:             [user_message('hi')]
+		tool_choice:          'auto'
+		tool_choice_function: 'get_weather'
+		parallel_tool_calls:  false
+	})
+	assert encoded.contains('"tool_choice":{"type":"function","function":{"name":"get_weather"}}')
+	assert encoded.contains('"parallel_tool_calls":false')
+	assert !encoded.contains('"tool_choice":"auto"')
+}
+
+fn test_encode_chat_request_renders_misc_knobs() {
+	encoded := encode_chat_request(ChatCompletionRequest{
+		model:          'gpt-4o-mini'
+		messages:       [user_message('hi')]
+		seed:           42
+		service_tier:   'flex'
+		store:          true
+		metadata:       {
+			'trace': 't-1'
+		}
+		logprobs:       true
+		top_logprobs:   3
+		stream:         true
+		stream_options: StreamOptions{
+			include_usage: true
+		}
+	})
+	assert encoded.contains('"seed":42')
+	assert encoded.contains('"service_tier":"flex"')
+	assert encoded.contains('"store":true')
+	assert encoded.contains('"metadata":{"trace":"t-1"}')
+	assert encoded.contains('"logprobs":true')
+	assert encoded.contains('"top_logprobs":3')
+	assert encoded.contains('"stream_options":{"include_usage":true}')
+}
+
+fn test_decode_chat_completion_response_with_logprobs() {
+	body := '{"id":"chatcmpl-4","object":"chat.completion","created":1740000000,"model":"gpt-4o-mini","choices":[{"index":0,"message":{"role":"assistant","content":"Hi"},"finish_reason":"stop","logprobs":{"content":[{"token":"Hi","logprob":-0.001,"bytes":[72,105],"top_logprobs":[{"token":"Hi","logprob":-0.001,"bytes":[72,105]}]}]}}],"usage":{"prompt_tokens":8,"completion_tokens":11,"total_tokens":19}}'
+	response := json.decode[ChatCompletionResponse](body)!
+	probs := response.choices[0].logprobs.content
+	assert probs.len == 1
+	assert probs[0].token == 'Hi'
+	assert probs[0].bytes == [72, 105]
+	assert probs[0].top_logprobs[0].logprob == -0.001
+}
+
+fn test_decode_stream_chunk_with_usage() {
+	body := '{"id":"chatcmpl-5","object":"chat.completion.chunk","created":1740000000,"model":"gpt-4o-mini","choices":[],"usage":{"prompt_tokens":8,"completion_tokens":11,"total_tokens":19}}'
+	chunk := json.decode[ChatCompletionChunk](body)!
+	assert chunk.choices.len == 0
+	if usage := chunk.usage {
+		assert usage.total_tokens == 19
+	} else {
+		assert false, 'usage should be set'
+	}
+}
+
 fn test_decode_chat_completion_response() {
 	body := '{"id":"chatcmpl-1","object":"chat.completion","created":1740000000,"model":"gpt-4o-mini","choices":[{"index":0,"message":{"role":"assistant","content":"Hello!"},"finish_reason":"stop"}],"usage":{"prompt_tokens":8,"completion_tokens":11,"total_tokens":19}}'
 	response := json.decode[ChatCompletionResponse](body)!
