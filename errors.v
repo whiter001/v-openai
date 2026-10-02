@@ -1,6 +1,6 @@
 module openai
 
-import json2 as json
+import x.json2 as json
 
 // ApiError is an error returned by the API itself (HTTP status >= 400).
 pub struct ApiError {

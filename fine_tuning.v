@@ -1,6 +1,6 @@
 module openai
 
-import json2 as json
+import x.json2 as json
 
 // FineTuningJob is one fine-tuning job.
 pub struct FineTuningJob {

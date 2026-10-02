@@ -1,6 +1,6 @@
 module openai
 
-import json2 as json
+import x.json2 as json
 
 // FileObject is one uploaded file.
 pub struct FileObject {

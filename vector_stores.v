@@ -1,6 +1,6 @@
 module openai
 
-import json2 as json
+import x.json2 as json
 
 // VectorStore is one vector store. Vector store calls require the
 // `OpenAI-Beta: assistants=v2` header; pass it via ClientConfig.headers.

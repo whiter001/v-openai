@@ -1,6 +1,6 @@
 module openai
 
-import json2 as json
+import x.json2 as json
 
 fn test_list_models_against_a_loopback_server() {
 	mock := start_mock_server('HTTP/1.1 200 OK', 'application/json',

@@ -1,6 +1,6 @@
 module openai
 
-import json2 as json
+import x.json2 as json
 import strings
 
 // CreateResponseRequest is the payload of POST /responses, the API OpenAI

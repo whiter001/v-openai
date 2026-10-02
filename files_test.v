@@ -1,6 +1,6 @@
 module openai
 
-import json2 as json
+import x.json2 as json
 
 fn test_upload_file_sends_a_multipart_body() {
 	mock := start_mock_server('HTTP/1.1 200 OK', 'application/json',

@@ -1,6 +1,6 @@
 module openai
 
-import json2 as json
+import x.json2 as json
 
 // ChatCompletionRequest is the payload of POST /chat/completions. Option
 // fields left as none and empty collections are not sent at all, so the API

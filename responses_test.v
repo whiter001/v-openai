@@ -1,6 +1,6 @@
 module openai
 
-import json2 as json
+import x.json2 as json
 
 fn test_encode_response_request_minimal() {
 	encoded := encode_response_request(CreateResponseRequest{

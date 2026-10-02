@@ -23,7 +23,9 @@ fn start_mock_server(status_line string, content_type string, response_body stri
 	mut listener := net.listen_tcp(.ip, ':0') or { panic(err) }
 	mock := &MockServer{
 		listener:      listener
-		request_lines: chan string{cap: 32}
+		// Roomy enough for several HTTP client retries; a full channel would
+		// deadlock the serve thread against the client's response wait.
+		request_lines: chan string{cap: 512}
 	}
 	spawn mock.serve(status_line, content_type, response_body)
 	return mock

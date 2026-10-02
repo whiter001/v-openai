@@ -1,6 +1,6 @@
 module openai
 
-import json2 as json
+import x.json2 as json
 
 // ImageRequest is the payload of POST /images/generations. `size` is e.g.
 // '1024x1024'; `quality` 'standard'/'hd'; `style' 'vivid'/'natural';

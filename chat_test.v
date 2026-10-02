@@ -1,6 +1,6 @@
 module openai
 
-import json2 as json
+import x.json2 as json
 
 fn test_encode_chat_request_sends_only_what_was_set() {
 	encoded := encode_chat_request(ChatCompletionRequest{

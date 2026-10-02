@@ -1,6 +1,6 @@
 module main
 
-import json2 as json
+import x.json2 as json
 import os
 import openai
 

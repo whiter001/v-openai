@@ -1,6 +1,6 @@
 module openai
 
-import json2 as json
+import x.json2 as json
 
 // ModerationRequest is the payload of POST /moderations. `model` is e.g.
 // 'omni-moderation-latest'; empty uses the API default.

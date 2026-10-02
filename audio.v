@@ -1,6 +1,6 @@
 module openai
 
-import json2 as json
+import x.json2 as json
 
 // SpeechRequest is the payload of POST /audio/speech. `voice` is e.g.
 // 'alloy'; `response_format` is 'mp3' (default), 'opus', 'aac', 'flac',

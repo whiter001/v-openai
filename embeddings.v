@@ -1,6 +1,6 @@
 module openai
 
-import json2 as json
+import x.json2 as json
 
 // EmbeddingRequest is the payload of POST /embeddings. Pass a single text as
 // `[text]`; `encoding_format` is 'float' or 'base64', empty for the default.

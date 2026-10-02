@@ -1,6 +1,6 @@
 module openai
 
-import json2 as json
+import x.json2 as json
 
 // Model is one entry of the models endpoint.
 pub struct Model {
